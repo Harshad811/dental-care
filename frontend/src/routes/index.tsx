@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router-dom";
+import type { ReactElement } from "react";
 import { useAuthStore } from "@/store/authStore";
 import type { Role } from "@/types";
 import AppLayout from "@/components/layout/app-layout";
@@ -58,7 +59,7 @@ function PublicRoute() {
   return <Outlet />;
 }
 
-function RoleGuard({ allowedRoles, children }: { allowedRoles: Role[]; children: JSX.Element }) {
+function RoleGuard({ allowedRoles, children }: { allowedRoles: Role[]; children: ReactElement }) {
   const { user } = useAuthStore();
   if (!user) return null;
   if (!allowedRoles.includes(user.role)) {
@@ -67,7 +68,7 @@ function RoleGuard({ allowedRoles, children }: { allowedRoles: Role[]; children:
   return children;
 }
 
-function withRoles(element: JSX.Element, allowedRoles: Role[]) {
+function withRoles(element: ReactElement, allowedRoles: Role[]) {
   return <RoleGuard allowedRoles={allowedRoles}>{element}</RoleGuard>;
 }
 
