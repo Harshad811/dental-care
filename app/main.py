@@ -1,20 +1,29 @@
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine
 from app.core.security import hash_password
 from app.core.permissions import Role
 from app.utils.scheduler import check_appointment_reminders, check_missed_appointments
 from app.routers import auth, admin_groups, hospitals, doctors, consultants, patients, cases, consultant_notes, treatment_plans, treatment_sittings, appointments, billings, pre_ops, post_ops, dashboards, whatsapp_messaging
 
 
+def run_migrations():
+    base_dir = Path(__file__).resolve().parents[1]
+    config = Config(str(base_dir / "alembic" / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL_SYNC)
+    command.upgrade(config, "head")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    await asyncio.to_thread(run_migrations)
     await seed_super_admin()
     reminder_task = asyncio.create_task(check_appointment_reminders())
     missed_task = asyncio.create_task(check_missed_appointments())
@@ -41,6 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 app.include_router(auth.router, prefix="/api/v1")

@@ -1,5 +1,6 @@
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
+import type { Role } from "@/types";
 import AppLayout from "@/components/layout/app-layout";
 import Login from "@/pages/auth/login";
 import SuperAdminDashboard from "@/pages/dashboard/super-admin";
@@ -19,22 +20,29 @@ import BillingList from "@/pages/billing/list";
 import WhatsAppMessaging from "@/pages/whatsapp/messaging";
 import Settings from "@/pages/settings/profile";
 
+const dashboardByRole: Record<Role, string> = {
+  SUPER_ADMIN: "/super-admin",
+  GROUP_ADMIN: "/group-admin",
+  HOSPITAL_ADMIN: "/hospital-admin",
+  DOCTOR: "/doctor",
+};
+
+function getDashboardPath(role?: Role) {
+  return role ? dashboardByRole[role] || "/doctor" : "/doctor";
+}
+
 function DashboardRedirect() {
   const { user } = useAuthStore();
   if (!user) return null;
-  const map: Record<string, string> = {
-    SUPER_ADMIN: "/super-admin",
-    GROUP_ADMIN: "/group-admin",
-    HOSPITAL_ADMIN: "/hospital-admin",
-    DOCTOR: "/doctor",
-  };
-  return <Navigate to={map[user.role] || "/doctor"} replace />;
+  return <Navigate to={getDashboardPath(user.role)} replace />;
 }
 
 function ProtectedLayout() {
-  const { isAuthenticated, _hasHydrated } = useAuthStore();
+  const location = useLocation();
+  const { user, accessToken, refreshToken, _hasHydrated } = useAuthStore();
+  const isAuthenticated = !!user && !!accessToken && !!refreshToken;
   if (!_hasHydrated) return null;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return (
     <AppLayout>
       <Outlet />
@@ -43,34 +51,55 @@ function ProtectedLayout() {
 }
 
 function PublicRoute() {
-  const { isAuthenticated, _hasHydrated } = useAuthStore();
+  const { user, accessToken, refreshToken, _hasHydrated } = useAuthStore();
+  const isAuthenticated = !!user && !!accessToken && !!refreshToken;
   if (!_hasHydrated) return null;
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  if (isAuthenticated) return <Navigate to={getDashboardPath(user?.role)} replace />;
   return <Outlet />;
 }
 
+function RoleGuard({ allowedRoles, children }: { allowedRoles: Role[]; children: JSX.Element }) {
+  const { user } = useAuthStore();
+  if (!user) return null;
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to={getDashboardPath(user.role)} replace />;
+  }
+  return children;
+}
+
+function withRoles(element: JSX.Element, allowedRoles: Role[]) {
+  return <RoleGuard allowedRoles={allowedRoles}>{element}</RoleGuard>;
+}
+
+const ADMIN_ROLES: Role[] = ["SUPER_ADMIN", "GROUP_ADMIN", "HOSPITAL_ADMIN"];
+const CARE_ROLES: Role[] = ["HOSPITAL_ADMIN", "DOCTOR"];
+
 export const router = createBrowserRouter([
-  { element: <PublicRoute />, children: [
-    { path: "/login", element: <Login /> },
-  ]},
-  { element: <ProtectedLayout />, children: [
-    { index: true, element: <DashboardRedirect /> },
-    { path: "/super-admin", element: <SuperAdminDashboard /> },
-    { path: "/group-admin", element: <GroupAdminDashboard /> },
-    { path: "/hospital-admin", element: <HospitalAdminDashboard /> },
-    { path: "/doctor", element: <DoctorDashboard /> },
-    { path: "/admin/groups", element: <AdminGroups /> },
-    { path: "/admin/hospitals", element: <AdminHospitals /> },
-    { path: "/patients", element: <PatientList /> },
-    { path: "/patients/:id", element: <PatientDetail /> },
-    { path: "/appointments", element: <AppointmentList /> },
-    { path: "/consultants", element: <ConsultantList /> },
-    { path: "/billing", element: <BillingList /> },
-    { path: "/whatsapp", element: <WhatsAppMessaging /> },
-    { path: "/cases", element: <CaseList /> },
-    { path: "/cases/:id", element: <CaseDetail /> },
-    { path: "/treatments", element: <TreatmentList /> },
-    { path: "/settings", element: <Settings /> },
-    { path: "*", element: <Navigate to="/" replace /> },
-  ]},
+  {
+    element: <PublicRoute />,
+    children: [{ path: "/login", element: <Login /> }],
+  },
+  {
+    element: <ProtectedLayout />,
+    children: [
+      { index: true, element: <DashboardRedirect /> },
+      { path: "/super-admin", element: withRoles(<SuperAdminDashboard />, ["SUPER_ADMIN"]) },
+      { path: "/group-admin", element: withRoles(<GroupAdminDashboard />, ["GROUP_ADMIN"]) },
+      { path: "/hospital-admin", element: withRoles(<HospitalAdminDashboard />, ["HOSPITAL_ADMIN"]) },
+      { path: "/doctor", element: withRoles(<DoctorDashboard />, ["DOCTOR"]) },
+      { path: "/admin/groups", element: withRoles(<AdminGroups />, ["SUPER_ADMIN"]) },
+      { path: "/admin/hospitals", element: withRoles(<AdminHospitals />, ["SUPER_ADMIN", "GROUP_ADMIN"]) },
+      { path: "/patients", element: withRoles(<PatientList />, CARE_ROLES) },
+      { path: "/patients/:id", element: withRoles(<PatientDetail />, CARE_ROLES) },
+      { path: "/appointments", element: withRoles(<AppointmentList />, CARE_ROLES) },
+      { path: "/consultants", element: withRoles(<ConsultantList />, ["HOSPITAL_ADMIN"]) },
+      { path: "/billing", element: withRoles(<BillingList />, CARE_ROLES) },
+      { path: "/whatsapp", element: withRoles(<WhatsAppMessaging />, ["HOSPITAL_ADMIN"]) },
+      { path: "/cases", element: withRoles(<CaseList />, CARE_ROLES) },
+      { path: "/cases/:id", element: withRoles(<CaseDetail />, CARE_ROLES) },
+      { path: "/treatments", element: withRoles(<TreatmentList />, CARE_ROLES) },
+      { path: "/settings", element: withRoles(<Settings />, [...ADMIN_ROLES, "DOCTOR"]) },
+      { path: "*", element: <Navigate to="/" replace /> },
+    ],
+  },
 ]);

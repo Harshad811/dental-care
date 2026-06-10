@@ -4,7 +4,7 @@ from typing import List
 
 class Settings(BaseSettings):
     APP_NAME: str = "Dental Hospital Management System"
-    DEBUG: bool = True
+    DEBUG: bool = False
     ENVIRONMENT: str = "development"
 
     DATABASE_URL: str = "sqlite+aiosqlite:///./dental_hospital.db"

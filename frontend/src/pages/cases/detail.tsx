@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
-import { casesApi, consultantsApi } from "@/services/endpoints"
+import { casesApi, consultantNotesApi } from "@/services/endpoints"
 import type { Case, PaginatedResponse, ConsultantNote } from "@/types"
 
 const statusVariant: Record<string, "default" | "secondary" | "outline" | "destructive" | "success" | "warning"> = {
@@ -50,7 +50,7 @@ export default function CaseDetail() {
 
   const { data: notesData } = useQuery({
     queryKey: ["case-notes", id],
-    queryFn: () => consultantsApi.list({ case_id: id }),
+    queryFn: () => consultantNotesApi.listByCase(id!),
     enabled: !!id,
   })
 
