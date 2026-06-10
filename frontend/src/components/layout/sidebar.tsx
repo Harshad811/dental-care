@@ -73,12 +73,6 @@ const roleNav: Record<string, { label: string; items: NavItem[] }[]> = {
       { label: "Settings", icon: Settings, path: "/settings" },
     ]},
   ],
-  CONSULTANT: [
-    { label: "Overview", items: [{ label: "Dashboard", icon: LayoutDashboard, path: "/" }] },
-  ],
-  STAFF: [
-    { label: "Overview", items: [{ label: "Dashboard", icon: LayoutDashboard, path: "/" }] },
-  ],
 }
 
 export default function Sidebar() {

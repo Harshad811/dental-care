@@ -85,6 +85,12 @@ export const consultantsApi = {
   delete: (id: string) => api.delete(`/consultants/${id}`),
 };
 
+export const consultantNotesApi = {
+  listByCase: (caseId: string) => api.get(`/consultant-notes/by-case/${caseId}`).then((r) => r.data),
+  create: (data: { case_id: string; consultant_id: string; notes: string }) =>
+    api.post("/consultant-notes", data).then((r) => r.data),
+};
+
 export const treatmentApi = {
   list: (params?: PaginationParams) => api.get("/treatment-plans", { params: withPagination(params) }).then((r) => r.data),
   get: (id: string) => api.get(`/treatment-plans/${id}`).then((r) => r.data),
