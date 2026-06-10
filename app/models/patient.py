@@ -1,0 +1,28 @@
+import uuid
+from datetime import datetime, date, timezone
+from sqlalchemy import String, DateTime, Date, Text, Boolean, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.database import Base
+
+
+class Patient(Base):
+    __tablename__ = "patients"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    hospital_id: Mapped[str] = mapped_column(String(36), ForeignKey("hospitals.id"), nullable=False)
+    doctor_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    gender: Mapped[str] = mapped_column(String(20), nullable=True)
+    date_of_birth: Mapped[date] = mapped_column(Date, nullable=True)
+    age: Mapped[int] = mapped_column(nullable=True)
+    phone: Mapped[str] = mapped_column(String(50), nullable=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=True)
+    address: Mapped[str] = mapped_column(Text, nullable=True)
+    medical_history: Mapped[str] = mapped_column(Text, nullable=True)
+    photo_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    hospital = relationship("Hospital", back_populates="patients")
+    doctor = relationship("User", back_populates="patients")
+    cases = relationship("Case", back_populates="patient", cascade="all, delete-orphan")
+    appointments = relationship("Appointment", back_populates="patient", cascade="all, delete-orphan")

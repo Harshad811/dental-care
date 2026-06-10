@@ -1,0 +1,43 @@
+from typing import Optional, List, Dict, Any
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.repositories.hospital_repository import HospitalRepository
+from app.repositories.user_repository import UserRepository
+from app.repositories.patient_repository import PatientRepository
+from app.repositories.audit_log_repository import AuditLogRepository
+from app.models.hospital import Hospital
+from app.core.permissions import Role
+
+
+class HospitalService:
+    def __init__(self, db: AsyncSession):
+        self.repo = HospitalRepository(db)
+        self.user_repo = UserRepository(db)
+        self.patient_repo = PatientRepository(db)
+        self.audit_log_repo = AuditLogRepository(db)
+        self.db = db
+
+    async def create(self, data: dict, user_id: str = None) -> Hospital:
+        hospital = await self.repo.create(**data)
+        await self.audit_log_repo.create(user_id=user_id, action="CREATE_HOSPITAL", entity_type="HOSPITAL", entity_id=str(hospital.id), details=f"Hospital '{hospital.name}' created")
+        return hospital
+
+    async def get(self, hospital_id: str) -> Optional[Hospital]:
+        return await self.repo.get(hospital_id)
+
+    async def get_all(self, skip: int = 0, limit: int = 100, filters: dict = None) -> List[Hospital]:
+        return await self.repo.get_all(skip=skip, limit=limit, filters=filters)
+
+    async def update(self, hospital_id: str, data: dict, user_id: str = None) -> Optional[Hospital]:
+        hospital = await self.repo.update(hospital_id, **data)
+        if hospital:
+            await self.audit_log_repo.create(user_id=user_id, action="UPDATE_HOSPITAL", entity_type="HOSPITAL", entity_id=hospital_id, details="Hospital updated")
+        return hospital
+
+    async def delete(self, hospital_id: str, user_id: str = None) -> bool:
+        result = await self.repo.delete(hospital_id)
+        if result:
+            await self.audit_log_repo.create(user_id=user_id, action="DELETE_HOSPITAL", entity_type="HOSPITAL", entity_id=hospital_id, details="Hospital deleted")
+        return result
+
+    async def get_analytics(self, hospital_id: str = None) -> Dict[str, Any]:
+        return {"total_hospitals": 1 if hospital_id else await self.repo.count(), "total_doctors": await self.user_repo.count({"hospital_id": hospital_id, "role": Role.DOCTOR.value}) if hospital_id else 0, "total_patients": await self.patient_repo.count({"hospital_id": hospital_id}) if hospital_id else 0}

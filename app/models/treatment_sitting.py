@@ -1,0 +1,18 @@
+import uuid
+from datetime import datetime, date, timezone
+from sqlalchemy import String, DateTime, Date, Text, Integer, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.database import Base
+
+
+class TreatmentSitting(Base):
+    __tablename__ = "treatment_sittings"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    treatment_plan_id: Mapped[str] = mapped_column(String(36), ForeignKey("treatment_plans.id"), nullable=False)
+    sitting_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    work_done: Mapped[str] = mapped_column(Text, nullable=True)
+    doctor_notes: Mapped[str] = mapped_column(Text, nullable=True)
+    next_appointment_date: Mapped[date] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    treatment_plan = relationship("TreatmentPlan", back_populates="sittings")
